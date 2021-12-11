@@ -133,25 +133,26 @@ export class HttpHelper {
         urls: Iterable<string>,
         site: string,
         dirname: string,
-        callback?: (filePath: string) => void
+        callback?: (filePath: string) => void,
+        total = 0
     ): Promise<void> {
-        const multiProgress = ProgressHelper.getDownloadMultiProgressBar()
+        const progress = ProgressHelper.getDownloadProgressBar()
+        progress.start(total, 0)
         await pMap(
             urls,
             async (filename) => {
                 const filePath = path.resolve(dirname, filename)
                 fs.mkdirSync(path.dirname(filePath), { recursive: true })
 
-                const progress = multiProgress.create(0, 0)
                 await this.download(new URL(filename, site), filePath, progress)
-                multiProgress.remove(progress)
                 if (callback) callback(filePath)
             },
             {
-                concurrency: 4,
+                concurrency: 8,
             }
         )
-        multiProgress.stop() // Лучше закрывать ручками, ибо не успевает обработаться таймаут и появляется лишняя строка
+        progress.stop()
+        // multiProgress.stop() // Лучше закрывать ручками, ибо не успевает обработаться таймаут и появляется лишняя строка
     }
 
     /**
@@ -172,9 +173,9 @@ export class HttpHelper {
             handler
                 .get(url, (res) => {
                     if (progressBar !== undefined) {
-                        progressBar.start(parseInt(res.headers["content-length"]) || 0, 0, {
-                            filename: path.basename(filePath),
-                        })
+                        // progressBar.start(parseInt(res.headers["content-length"]) || 0, 0, {
+                        //     filename: path.basename(filePath),
+                        // })
                         res.on("data", (chunk: Buffer) => {
                             progressBar.increment(chunk.length)
                         })

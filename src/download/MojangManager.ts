@@ -46,7 +46,13 @@ export class MojangManager {
         LogHelper.info("Download libraries and natives, please wait...")
         const librariesList = this.librariesParse(libraries)
 
-        await HttpHelper.downloadFiles(librariesList.libraries, this.clientsLink, librariesDir)
+        await HttpHelper.downloadFiles(
+            librariesList.libraries,
+            this.clientsLink,
+            librariesDir,
+            () => true,
+            librariesList.librariesTotal
+        )
 
         // Natives
         const nativesDir = path.resolve(clientDir, "natives")
@@ -100,7 +106,13 @@ export class MojangManager {
         }
 
         LogHelper.info("Download assets, please wait...")
-        await HttpHelper.downloadFiles(assetsHashes, this.assetsLink, path.resolve(assetsDir, "objects"))
+        await HttpHelper.downloadFiles(
+            assetsHashes,
+            this.assetsLink,
+            path.resolve(assetsDir, "objects"),
+            () => true,
+            version.assetIndex.totalSize
+        )
         LogHelper.info("Done")
     }
 
@@ -108,10 +120,17 @@ export class MojangManager {
      * Получить список библиотек и нативных файлов для скачивания
      * @param libraries Объект со списком библиотек и нативных файлов
      */
-    librariesParse(libraries: any[]): { libraries: Set<string>; natives: Set<string> } {
+    librariesParse(libraries: any[]): {
+        libraries: Set<string>
+        librariesTotal: number
+        natives: Set<string>
+        nativesTotal: number
+    } {
         const filteredData = {
             libraries: new Set() as Set<string>,
+            librariesTotal: 0,
             natives: new Set() as Set<string>,
+            nativesTotal: 0,
         }
 
         libraries.forEach((lib) => {
@@ -131,6 +150,7 @@ export class MojangManager {
 
             if (lib.downloads.artifact !== undefined) {
                 filteredData.libraries.add(lib.downloads.artifact.path)
+                filteredData.librariesTotal += lib.downloads.artifact.size
             }
 
             // Natives
@@ -154,6 +174,7 @@ export class MojangManager {
                     const nativeData = lib.downloads.classifiers[native]
                     if (nativeData === undefined) return
                     filteredData.natives.add(nativeData.path)
+                    filteredData.nativesTotal += nativeData.size
                 })
             }
         })
